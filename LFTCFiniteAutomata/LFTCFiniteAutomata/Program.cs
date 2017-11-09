@@ -22,7 +22,7 @@ namespace LFTCFiniteAutomata
         static void Main(string[] args)
         {
             var fa = new FSA("D:/Projects/personal/College/LFTCFiniteAutomata/LFTCFiniteAutomata/FA.txt");
-            fa.Accepts("acbcb");
+            fa.Accepts("1014");
             bool done = false;
             while (!done)
             {
