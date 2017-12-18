@@ -4,7 +4,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{61A1F37D-B207-49C2-9A59-59D4A8EFFB51}</ProjectGuid>
+    <ProjectGuid>{97EEAE59-AF7A-496B-B89F-B4B83FE85FE1}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>KaratsubaMPI</RootNamespace>
     <AssemblyName>KaratsubaMPI</AssemblyName>
