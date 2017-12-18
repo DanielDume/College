@@ -350,7 +350,20 @@ namespace KaratsubaMPI
             public int Column;
             public int Value;
         }
+        public int[,,] GetSplitIndexes(int length, int nrWorkers)
+        {
+            var res = new List<Tuple<int, int>>();
+            var counter = 0;
+            for (int i = 0; i <= length; i++)
+            {
+                for (int j = 0; j <= length; j++)
+                {
 
+                }
+            }
+            return null;
+        }
+        public int GetFirstPolIndexStart (int length)
         public static void RegMult(string[] args)
         {
             using (new Environment(ref args))
@@ -370,7 +383,7 @@ namespace KaratsubaMPI
 
                     var coefficients = new int[x.Degree + y.Degree + 1];
 
-                    for (int i = 0; i < n * n; i++)
+                    for (int i = 0; i < coefficients.Length; i++)
                     {
                         var res = comm.Receive<VectorElement>(Communicator.anySource, 1);
                     }
