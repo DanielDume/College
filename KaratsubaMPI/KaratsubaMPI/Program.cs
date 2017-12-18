@@ -351,12 +351,7 @@ namespace KaratsubaMPI
             public int Value;
         }
 
-        // Install-Package MPI.NET in the "Package Manager Console" window.
-        // http://www.osl.iu.edu/research/mpi.net/documentation/tutorial/hello.php
-        // Command Prompt: mpiexec -n 8 Karatsuba.exe
-        // 8 is the number of processes (must be greater than 1).
-        public static void Main(string[] args)
-        // Need to pass the arguments with which "Main" was started.
+        public static void RegMult(string[] args)
         {
             using (new Environment(ref args))
             {
@@ -365,13 +360,25 @@ namespace KaratsubaMPI
                 int n;
                 if (comm.Rank == 0)
                 {
-                    const int degree = 5;
-                    x = RandomPolynomial(degree);
-                    y = RandomPolynomial(degree);
-                    n = degree + 1;                    
+                    const int degree = 2;
+                    x = new Polynomial(new int[] { 1, 2, 3 });
+                    y = new Polynomial(new int[] { 4, 5, 6 });                    
+                    n = degree + 1;
 
                     comm.Broadcast(ref x, 0);
                     comm.Broadcast(ref y, 0);
+
+                    var coefficients = new int[x.Degree + y.Degree + 1];
+
+                    for (int i = 0; i < n * n; i++)
+                    {
+                        var res = comm.Receive<VectorElement>(Communicator.anySource, 1);
+                    }
+                    //for (var i = 0; i <= x.Degree; ++i)
+                    //    for (var j = 0; j <= y.Degree; ++j)
+                    //        coefficients[i + j] += x.Coefficients[i] * y.Coefficients[j];
+
+                    var result =  new Polynomial(coefficients);
                 }
                 else
                 {
@@ -381,6 +388,16 @@ namespace KaratsubaMPI
                     Console.WriteLine(y.ToString());
                 }
             }
+        }
+
+        // Install-Package MPI.NET in the "Package Manager Console" window.
+        // http://www.osl.iu.edu/research/mpi.net/documentation/tutorial/hello.php
+        // Command Prompt: mpiexec -n 8 Karatsuba.exe
+        // 8 is the number of processes (must be greater than 1).
+        public static void Main(string[] args)
+        // Need to pass the arguments with which "Main" was started.
+        {
+            RegMult(args);   
             //using (new Environment(ref args))
             //{
             //    var comm = Communicator.world;
