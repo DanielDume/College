@@ -363,7 +363,7 @@ namespace KaratsubaMPI
             }
             return null;
         }
-        public int GetFirstPolIndexStart (int length)
+        //public int GetFirstPolIndexStart (int length)
         public static void RegMult(string[] args)
         {
             using (new Environment(ref args))
@@ -375,7 +375,7 @@ namespace KaratsubaMPI
                 {
                     const int degree = 2;
                     x = new Polynomial(new int[] { 1, 2, 3 });
-                    y = new Polynomial(new int[] { 4, 5, 6 });                    
+                    y = new Polynomial(new int[] { 4, 5, 6 });
                     n = degree + 1;
 
                     comm.Broadcast(ref x, 0);
@@ -383,22 +383,44 @@ namespace KaratsubaMPI
 
                     var coefficients = new int[x.Degree + y.Degree + 1];
 
-                    for (int i = 0; i < coefficients.Length; i++)
+                    for (int i = 0; i < (x.Degree + 1) * (y.Degree + 1); i++)
                     {
                         var res = comm.Receive<VectorElement>(Communicator.anySource, 1);
+                        coefficients[res.Index] += res.Value;
                     }
                     //for (var i = 0; i <= x.Degree; ++i)
                     //    for (var j = 0; j <= y.Degree; ++j)
                     //        coefficients[i + j] += x.Coefficients[i] * y.Coefficients[j];
 
-                    var result =  new Polynomial(coefficients);
+                    var result = new Polynomial(coefficients);
+                    Console.WriteLine(result.ToString());
                 }
                 else
                 {
                     comm.Broadcast(ref x, 0);
                     comm.Broadcast(ref y, 0);
-                    Console.WriteLine(x.ToString());
-                    Console.WriteLine(y.ToString());
+                    int start = (comm.Rank - 1) * ((x.Degree + 1) / (comm.Size - 1));
+                    if (comm.Rank < comm.Size - 1)
+                    {
+                        int end = start + ((x.Degree + 1) / (comm.Size - 1));
+                        for (int i = start; i < end; i++)
+                        {
+                            for (int j = 0; j <= y.Degree; j++)
+                            {
+                                comm.Send(new VectorElement { Index = i + j, Value = x.Coefficients[i] * y.Coefficients[j] }, 0, 1);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for (int i = start; i <= x.Degree; i++)
+                        {
+                            for (int j = 0; j <= y.Degree; j++)
+                            {
+                                comm.Send(new VectorElement { Index = i + j, Value = x.Coefficients[i] * y.Coefficients[j] }, 0, 1);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -410,7 +432,7 @@ namespace KaratsubaMPI
         public static void Main(string[] args)
         // Need to pass the arguments with which "Main" was started.
         {
-            RegMult(args);   
+            RegMult(args);
             //using (new Environment(ref args))
             //{
             //    var comm = Communicator.world;
