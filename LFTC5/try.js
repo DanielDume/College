@@ -1,8 +1,9 @@
 var lng = { "S": [[3], [1, "S"], [1, "S", 2, "S"]] };
 lng["S"] = lng["S"].reverse();
 var rules = ["S"];
-//var input = [1 ,1,3,2,1,3,2,3];
-var input = [1,1,2];
+var input = [1 ,1,3,2,1,3,2,3];
+//var input = [1,1,2];
+//var input = [3,1];
 var start = rules[0];
 var globalInputIndex = 0;
 var Node = require("tree-node");
@@ -10,8 +11,10 @@ var Node = require("tree-node");
 function main() {
 
     //console.log(expandRule(start, 0));
-    var status = expandRule(start, 0);
-    if (status == input.length) {
+    var root = new Node();
+    root.data({value: start});
+    var status = expandRule(start, 0, root);
+    if (status.val == input.length) {
         console.log("GUD");
     }
     else {
@@ -20,36 +23,37 @@ function main() {
 
 }
 
-function expandRule(rule, inputIndex) {
+function expandRule(rule, inputIndex, root) {
     var optionIndex = 0;
     while (optionIndex < lng[rule].length) {
 
         var option = lng[rule][optionIndex];
-        var success = expandOption(option, 0, inputIndex);
-        if (success > 0) {
+        var success = expandOption(option, 0, inputIndex, root);
+        if (success.val > 0) {
+            root.appendChild(success.node);
             return success;
         }
         optionIndex += 1;
 
     }
-    return -1;
+    return {val : -1, node: null};
 }
 
-function expandOption(option, optionIndex, inputIndex) {
+function expandOption(option, optionIndex, inputIndex, root) {
     while (optionIndex < option.length) {
 
         if (isNaN(option[optionIndex])) {
 
             //is a prod
             var success = expandRule(option[optionIndex], inputIndex);
-            if (success > 0) {
-                inputIndex = success;
+            if (success.val > 0) {
+                inputIndex = success.val;
                 optionIndex += 1;
 
             }
             else {
                 //console.error("Bad input");
-                return -1;
+                return {val : -1, node: null};
             }
         } else {
             //is terminal
@@ -62,11 +66,11 @@ function expandOption(option, optionIndex, inputIndex) {
             }
             else {
                 //console.error("Unexpected character");
-                return -1;
+                return {val : -1, node: null};
             }
         }
     }
-    return inputIndex;
+    return {val: inputIndex, node: null};
 }
 
 // function main() {
