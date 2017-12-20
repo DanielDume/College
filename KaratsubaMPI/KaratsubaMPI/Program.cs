@@ -422,7 +422,7 @@ namespace KaratsubaMPI
             }
         }
 
-        public static Polynomial KaratsubaMult(string[] args)
+        public static void KaratsubaMain(string[] args)
         {
             using (new Environment(ref args))
             {
@@ -431,53 +431,40 @@ namespace KaratsubaMPI
                 int n;
                 if (comm.Rank == 0)
                 {
-                    const int degree = 2;
                     x = new Polynomial(new int[] { 1, 2, 3 });
                     y = new Polynomial(new int[] { 4, 5, 6 });
-                    n = degree + 1;
-
-                    comm.Broadcast(ref x, 0);
-                    comm.Broadcast(ref y, 0);
-
-                    var coefficients = new int[x.Degree + y.Degree + 1];
-
-                    for (int i = 0; i < (x.Degree + 1) * (y.Degree + 1); i++)
-                    {
-                        var res = comm.Receive<VectorElement>(Communicator.anySource, 1);
-                        coefficients[res.Index] += res.Value;
-                    }
-
-                    var result = new Polynomial(coefficients);
-                    Console.WriteLine(result.ToString());
+                    KaratsubaMaster(x, y, comm.Size - 1, comm);
                 }
                 else
                 {
-                    comm.Broadcast(ref x, 0);
-                    comm.Broadcast(ref y, 0);
-                    int start = (comm.Rank - 1) * ((x.Degree + 1) / (comm.Size - 1));
-                    if (comm.Rank < comm.Size - 1)
-                    {
-                        int end = start + ((x.Degree + 1) / (comm.Size - 1));
-                        for (int i = start; i < end; i++)
-                        {
-                            for (int j = 0; j <= y.Degree; j++)
-                            {
-                                comm.Send(new VectorElement { Index = i + j, Value = x.Coefficients[i] * y.Coefficients[j] }, 0, 1);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        for (int i = start; i <= x.Degree; i++)
-                        {
-                            for (int j = 0; j <= y.Degree; j++)
-                            {
-                                comm.Send(new VectorElement { Index = i + j, Value = x.Coefficients[i] * y.Coefficients[j] }, 0, 1);
-                            }
-                        }
-                    }
+                    KaratsubaWorker(comm.Rank, comm.Size - 1, comm, comm.Rank);
                 }
             }
+        }
+
+        private static void KaratsubaWorker(int rank, int pr, Communicator comm, int caller)
+        {
+            //throw new NotImplementedException();
+            int sizeA, sizeB;
+            var a = comm.Receive<Polynomial>(Communicator.anySource, 1);
+            var b = comm.Receive<Polynomial>(Communicator.anySource, 2);
+            Polynomial p = Karatsuba(a, b, comm.Rank, pr);
+            comm.Send<Polynomial>(p, caller, 3);
+
+        }
+
+        private static void KaratsubaMaster(Polynomial x, Polynomial y, int pr, Communicator comm)
+        {
+            //throw new NotImplementedException();
+            Polynomial p;
+            p = Karatsuba(x, y, 0, pr);
+            Console.WriteLine(p.ToString());
+        }
+
+        private static Polynomial Karatsuba(Polynomial x, Polynomial y, int v, int pr)
+        {
+            throw new NotImplementedException();
+
         }
 
         // Install-Package MPI.NET in the "Package Manager Console" window.
