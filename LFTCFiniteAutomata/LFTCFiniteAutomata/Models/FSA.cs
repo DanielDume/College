@@ -24,7 +24,9 @@ namespace LFTCFiniteAutomata.Models
         public string Q0 { get => q0; set => q0 = value; }
 
         public List<string> F => f;
-
+        /*
+         * Constructor with filename of FA
+         */
         public FSA(string fileName){
 
             try
@@ -50,7 +52,9 @@ namespace LFTCFiniteAutomata.Models
                 Console.WriteLine(e.Message);
             }
         }
-
+        /*
+         * Constructor with all elements provided
+         */
         public FSA(IEnumerable<string> q, IEnumerable<char> sigma, IEnumerable<Transition> delta, string q0, IEnumerable<string> f)
         {
             q = q.ToList();
@@ -59,13 +63,15 @@ namespace LFTCFiniteAutomata.Models
             AddInitialState(q0);
             AddFinalStates(f);
         }
-
+        /*
+         * Adds a transition if it is valid (states belong to Q and they are not already in the list)
+         */
         private void AddTransitions(IEnumerable<Transition> delta)
         {
             delta.ToList().Where(ValidTransition).ToList()
                 .ForEach(t => Delta.Add(t));
         }
-
+        //Adds the initial state if it is valid (is contained in Q)
         private void AddInitialState(string q0)
         {
             if (q.Contains(q0))
@@ -73,7 +79,7 @@ namespace LFTCFiniteAutomata.Models
                 this.q0 = q0;
             }
         }
-
+        //Adds all final states if they are contained in Q
         private void AddFinalStates(IEnumerable<string> f)
         {
             foreach (var finalState in f.Where(
@@ -82,7 +88,7 @@ namespace LFTCFiniteAutomata.Models
                 this.f.Add(finalState);
             }
         }
-
+        //Checks if a transition is valid (start and final state belong to Q and token belongs to sigma)
         private bool ValidTransition(Transition transition){
             return q.Contains(transition.StartState)
             && q.Contains(transition.EndState)
@@ -96,7 +102,16 @@ namespace LFTCFiniteAutomata.Models
                                     && t.Token == transition.Token
                                     && t.EndState == transition.EndState);
         }
-
+        public string GetLongesAccepted(string input)
+        {
+            StringBuilder currentSeq = new StringBuilder("");
+            if (Accepts(Q0, input, new StringBuilder(), currentSeq))
+            {
+                return input;
+            }
+            return longestAccepted;
+        }
+        //Check if the FA accepts an input, and if it doesn`t, shows the longest accepted prefix
         public void Accepts(string input)
         {
             Console.WriteLine("Trying to accept: " + input);
@@ -107,7 +122,7 @@ namespace LFTCFiniteAutomata.Models
             }
             Console.WriteLine("Could not accept the input: " + input + " longest accepted:" + longestAccepted);
         }
-
+        //Recursive function that aids in checking if the FA accepts a input
         private bool Accepts(string currentState, string input, StringBuilder steps, StringBuilder currentSequence)
         {
             if (input.Length > 0)

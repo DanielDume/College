@@ -21,8 +21,8 @@ namespace LFTCFiniteAutomata
 
         static void Main(string[] args)
         {
-            var fa = new FSA("D:/Projects/personal/College/LFTCFiniteAutomata/LFTCFiniteAutomata/FA.txt");
-            fa.Accepts("1014");
+            var fa = new FSA("C:/Work/allThings/College/LFTCFiniteAutomata/LFTCFiniteAutomata/FA2.txt");
+            fa.Accepts("01000");
             bool done = false;
             while (!done)
             {

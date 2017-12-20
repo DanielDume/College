@@ -53,6 +53,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="FA.txt" />
+    <Content Include="FA2.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
