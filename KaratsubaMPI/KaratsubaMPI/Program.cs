@@ -370,7 +370,7 @@ namespace KaratsubaMPI
         [Serializable]
         public enum Operation
         {
-            Read, Write, Update, Done
+            Read, Write, Update, Done, Prepare
         }
         [Serializable]
         public class MpiMessage
@@ -382,7 +382,13 @@ namespace KaratsubaMPI
         }
 
         //public static List<int> variables;
-
+        public static void PrintList(List<int> var)
+        {
+            for (int i = 0; i < var.Count; i++)
+            {
+                Console.WriteLine("{0}: {1}", i, var[i]);
+            }
+        }
         public static void Lab10Main(string[] args)
         {
 
@@ -396,7 +402,7 @@ namespace KaratsubaMPI
                     List<Operation> operationQueue = new List<Operation>();
                     int Processes = comm.Size - 1;
                     bool done = false;
-                    variables = new List<int>(new int[] { 0, 1, 2 });
+                    variables = new List<int>(new int[] { 0, 1, 2 });                    
                     comm.Broadcast(ref variables, 0);          
                     while (!done)
                     {
@@ -413,7 +419,11 @@ namespace KaratsubaMPI
                             case Operation.Update:
                                 break;
 
+                            case Operation.Prepare:
+                                break;
+
                             case Operation.Done:
+                                variables[0] = 9999;
                                 Console.WriteLine("Process {0} has terminated", message.Sender);
                                 Processes--;
                                 if (Processes == 0)
@@ -431,9 +441,20 @@ namespace KaratsubaMPI
                 }
                 else
                 {
-                    Console.WriteLine("I am slave nr. {0}", comm.Rank);
+                    Console.WriteLine("I am slave nr. {0}", comm.Rank);                    
                     comm.Broadcast(ref variables, 0);
-                    comm.Send<MpiMessage>(new MpiMessage { Sender = comm.Rank, NewValue = -1, Operation = Operation.Done, VariableIndex = 0 }, 0, 1);
+                    var localVariables = new List<int>(variables.ToArray());
+                    if (comm.Rank == 3)
+                    {
+                        //PrintList(localVariables);
+                        //update a variable
+                        comm.Send(new MpiMessage { Sender = comm.Rank, NewValue = 100, Operation = Operation.Prepare, VariableIndex = 2 }, 0, 1);
+                        var message = comm.Receive<MpiMessage>(0, 1);
+                        localVariables[message.VariableIndex] = message.NewValue;
+                        comm.Send(new MpiMessage { Sender = comm.Rank, NewValue = message.NewValue, Operation = Operation.Update, VariableIndex = 2 }, 0, 1);
+                        //
+                    }
+                    comm.Send(new MpiMessage { Sender = comm.Rank, NewValue = -1, Operation = Operation.Done, VariableIndex = 0 }, 0, 1);
                 }
 
             }
