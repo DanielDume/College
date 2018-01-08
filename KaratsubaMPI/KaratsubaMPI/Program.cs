@@ -368,19 +368,6 @@ namespace KaratsubaMPI
             return (r3 << (2 * length)) + ((r2 - r3 - r1) << length) + r1;
 
         }
-        [Serializable]
-        public enum Operation
-        {
-            Read, Write, Update, Done, Prepare
-        }
-        [Serializable]
-        public class MpiMessage
-        {
-            public int Sender;
-            public Operation Operation;
-            public int VariableIndex;
-            public int NewValue;
-        }
         //public static List<int> variables;
         public static void PrintList(List<int> var)
         {
@@ -388,78 +375,7 @@ namespace KaratsubaMPI
             {
                 Console.WriteLine("{0}: {1}", i, var[i]);
             }
-        }
-        public static void Lab10Main(string[] args)
-        {
-
-            using (new Environment(ref args))
-            {
-                List<int> variables = null;
-                var comm = Communicator.world;
-                if (comm.Rank == 0) //main
-                {
-                    Console.WriteLine("I am master");
-                    List<Operation> operationQueue = new List<Operation>();
-                    int Processes = comm.Size - 1;
-                    bool done = false;
-                    variables = new List<int>(new int[] { 0, 1, 2 });
-                    comm.Broadcast(ref variables, 0);
-                    while (!done)
-                    {
-
-                        var message = comm.Receive<MpiMessage>(Communicator.anySource, 1);
-                        switch (message.Operation)
-                        {
-                            case Operation.Read:
-                                break;
-
-                            case Operation.Write:
-                                break;
-
-                            case Operation.Update:
-                                break;
-
-                            case Operation.Prepare:
-                                break;
-
-                            case Operation.Done:
-                                variables[0] = 9999;
-                                Console.WriteLine("Process {0} has terminated", message.Sender);
-                                Processes--;
-                                if (Processes == 0)
-                                {
-                                    Console.WriteLine("All processes are done");
-                                    done = true;
-                                }
-                                break;
-
-                            default:
-                                Console.WriteLine("Bad operation");
-                                break;
-                        }
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("I am slave nr. {0}", comm.Rank);
-                    comm.Broadcast(ref variables, 0);
-                    var localVariables = new List<int>(variables.ToArray());
-                    if (comm.Rank == 3)
-                    {
-                        //PrintList(localVariables);
-                        //update a variable
-                        //comm.Send(new MpiMessage { Sender = comm.Rank, NewValue = 100, Operation = Operation.Prepare, VariableIndex = 2 }, 0, 1);
-                        //var message = comm.Receive<MpiMessage>(0, 1);
-                        //localVariables[message.VariableIndex] = message.NewValue;
-                        //comm.Send(new MpiMessage { Sender = comm.Rank, NewValue = message.NewValue, Operation = Operation.Update, VariableIndex = 2 }, 0, 1);
-                        //
-                    }
-                    comm.Send(new MpiMessage { Sender = comm.Rank, NewValue = -1, Operation = Operation.Done, VariableIndex = 0 }, 0, 1);
-                }
-
-            }
-
-        }
+        }        
         [Serializable]
         public enum Operations
         {
@@ -556,6 +472,13 @@ namespace KaratsubaMPI
                             b = b + 7;
                             Write(comm.Rank, 1, comm, b);
                             Unlock(comm.Rank, 1, comm);
+                            Lock(comm.Rank, 0, comm);
+                            Thread.Sleep(rnd.Next() % 1000);
+                            int d = Read(comm.Rank, 0, comm);
+                            d = d + 10;
+                            Write(comm.Rank, 0, comm, d);
+                            //variables[0] = a;
+                            Unlock(comm.Rank, 0, comm);
                             break;
                         case 3:
                             Lock(comm.Rank, 2, comm);
