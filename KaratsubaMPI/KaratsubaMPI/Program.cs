@@ -18,6 +18,7 @@ namespace KaratsubaMPI
     [Serializable]
     public sealed class Polynomial
     {
+        public static Random rnd = new Random();
         public static Stopwatch sw = new Stopwatch();
         public static readonly Random R = new Random();
 
@@ -380,7 +381,6 @@ namespace KaratsubaMPI
             public int VariableIndex;
             public int NewValue;
         }
-
         //public static List<int> variables;
         public static void PrintList(List<int> var)
         {
@@ -402,8 +402,8 @@ namespace KaratsubaMPI
                     List<Operation> operationQueue = new List<Operation>();
                     int Processes = comm.Size - 1;
                     bool done = false;
-                    variables = new List<int>(new int[] { 0, 1, 2 });                    
-                    comm.Broadcast(ref variables, 0);          
+                    variables = new List<int>(new int[] { 0, 1, 2 });
+                    comm.Broadcast(ref variables, 0);
                     while (!done)
                     {
 
@@ -441,17 +441,17 @@ namespace KaratsubaMPI
                 }
                 else
                 {
-                    Console.WriteLine("I am slave nr. {0}", comm.Rank);                    
+                    Console.WriteLine("I am slave nr. {0}", comm.Rank);
                     comm.Broadcast(ref variables, 0);
                     var localVariables = new List<int>(variables.ToArray());
                     if (comm.Rank == 3)
                     {
                         //PrintList(localVariables);
                         //update a variable
-                        comm.Send(new MpiMessage { Sender = comm.Rank, NewValue = 100, Operation = Operation.Prepare, VariableIndex = 2 }, 0, 1);
-                        var message = comm.Receive<MpiMessage>(0, 1);
-                        localVariables[message.VariableIndex] = message.NewValue;
-                        comm.Send(new MpiMessage { Sender = comm.Rank, NewValue = message.NewValue, Operation = Operation.Update, VariableIndex = 2 }, 0, 1);
+                        //comm.Send(new MpiMessage { Sender = comm.Rank, NewValue = 100, Operation = Operation.Prepare, VariableIndex = 2 }, 0, 1);
+                        //var message = comm.Receive<MpiMessage>(0, 1);
+                        //localVariables[message.VariableIndex] = message.NewValue;
+                        //comm.Send(new MpiMessage { Sender = comm.Rank, NewValue = message.NewValue, Operation = Operation.Update, VariableIndex = 2 }, 0, 1);
                         //
                     }
                     comm.Send(new MpiMessage { Sender = comm.Rank, NewValue = -1, Operation = Operation.Done, VariableIndex = 0 }, 0, 1);
@@ -460,10 +460,207 @@ namespace KaratsubaMPI
             }
 
         }
+        [Serializable]
+        public enum Operations
+        {
+            LOCK, UNLOCK, READ, WRITE, DONE
+        }
+        [Serializable]
+        public class OperationsMessage
+        {
+            public Operations Operation;
+            public int Sender;
+        }
+        public static string VariablesString(List<int> var)
+        {
+            StringBuilder s = new StringBuilder();
+            for (int i = 0; i < var.Count; i++)
+            {
+                s.Append(String.Format("{0} : {1}\n", i, var[i]));
+            }
+            return s.ToString();
+        }
+        public static void NewMain(string[] args)
+        {
+            using (new Environment(ref args))
+            {
+                List<int> variables = null;
+                List<int> ownership = null;
+                var comm = Communicator.world;
+                if (comm.Rank == 0) //main
+                {
+                    variables = new List<int>(new int[] { 0, 0, 0 });
+                    ownership = new List<int>(new int[] { 0, 0, 0 });
+                    int Processes = comm.Size - 1;
+                    bool done = false;
+                    comm.Broadcast(ref variables, 0);
+                    while (!done)
+                    {
+                        var op = comm.Receive<OperationsMessage>(Communicator.anySource, 1);
+                        switch (op.Operation)
+                        {
+                            case Operations.LOCK:
+                                Console.WriteLine("LOCK request from : {0}", op.Sender);
+                                HandleLock(op.Sender, ownership, comm);
+                                break;
+
+                            case Operations.UNLOCK:
+                                Console.WriteLine("UNLOCK request from : {0}", op.Sender);
+                                HandleUnlock(op.Sender, ownership, comm);
+                                break;
+
+                            case Operations.READ:
+                                Console.WriteLine("READ request from : {0}", op.Sender);
+                                HandleRead(op.Sender, ownership, comm, variables);
+                                break;
+
+                            case Operations.WRITE:
+                                Console.WriteLine("WRITE request from : {0}", op.Sender);
+                                HandleWrite(op.Sender, ownership, comm, variables);
+                                break;
+
+                            case Operations.DONE:
+                                Console.WriteLine("Process {0} has terminated", op.Sender);
+                                Processes--;
+                                if (Processes == 0)
+                                {
+                                    Console.WriteLine("All processes are done");
+                                    done = true;
+                                    PrintList(variables);
+                                }
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+
+                }
+                else
+                {
+                    variables = new List<int>(new int[] { 0, 0, 0 });
+                    switch (comm.Rank)
+                    {
+                        case 1:
+                            Lock(comm.Rank, 0, comm);
+                            Thread.Sleep(rnd.Next() % 1000);
+                            int a = Read(comm.Rank, 0, comm);
+                            a = a + 1;
+                            Write(comm.Rank, 0, comm, a);
+                            //variables[0] = a;
+                            Unlock(comm.Rank, 0, comm);
+                            break;
+                        case 2:
+                            Lock(comm.Rank, 1, comm);
+                            Thread.Sleep(rnd.Next() % 1000);
+                            int b = Read(comm.Rank, 1, comm);
+                            b = b + 7;
+                            Write(comm.Rank, 1, comm, b);
+                            Unlock(comm.Rank, 1, comm);
+                            break;
+                        case 3:
+                            Lock(comm.Rank, 2, comm);
+                            Thread.Sleep(rnd.Next() % 1000);
+                            int c = Read(comm.Rank, 2, comm);
+                            c = c + 14;
+                            Write(comm.Rank, 2, comm, c);
+                            Unlock(comm.Rank, 2, comm);
+                            break;
+                        default:
+                            break;
+                    }
+                    Console.WriteLine("Printing variable status from process : {0} \n{1}", comm.Rank, VariablesString(variables));
+                    //PrintList(variables);
+                    comm.Send(new OperationsMessage { Operation = Operations.DONE, Sender = comm.Rank }, 0, 1);
+                }
+            }
+        }
+
+        private static int Read(int rank, int v, Communicator comm)
+        {
+            Console.WriteLine("Send READ request for variable {0} by process {1}", v, rank);
+            Operations op = Operations.READ;
+            comm.Send(new OperationsMessage { Operation = op, Sender = rank }, 0, 1);
+            comm.Send(v, 0, 2);
+            var res = comm.Receive<int>(0, 4);
+            return res;
+        }
+
+        private static void Write(int rank, int v, Communicator comm, int newVal)
+        {
+            Console.WriteLine("Send WRITE request for variable {0} by process {1}", v, rank);
+            Operations op = Operations.WRITE;
+            comm.Send(new OperationsMessage { Operation = op, Sender = rank }, 0, 1);
+            comm.Send(v, 0, 2);
+            comm.Send(newVal, 0, 4);
+        }
+
+        private static void Unlock(int rank, int v, Communicator comm)
+        {
+            Console.WriteLine("Send UNLOCK request for variable {0} by process {1}", v, rank);
+            Operations op = Operations.UNLOCK;
+            comm.Send(new OperationsMessage { Operation = op, Sender = rank }, 0, 1);
+            comm.Send(v, 0, 2);
+        }
+
+        private static void Lock(int rank, int v, Communicator comm)
+        {
+            Console.WriteLine("Send LOCK request for variable {0} by process {1}", v, rank);
+            bool locked = false;
+            var op = Operations.LOCK;
+            while (!locked)
+            {
+                comm.Send(new OperationsMessage { Operation = op, Sender = rank }, 0, 1);
+                comm.Send(v, 0, 2);
+                locked = comm.Receive<bool>(0, 3);
+                if (!locked)
+                {
+                    Thread.Sleep(rnd.Next() % 1000);
+                }
+            }
+            Console.WriteLine("Succesfully locked variable {0} for process {1}", v, rank);
+        }
+
+        private static void HandleWrite(int sender, List<int> ownership, Communicator comm, List<int> variables)
+        {
+            var variableIndex = comm.Receive<int>(sender, 2);
+            variables[variableIndex] = comm.Receive<int>(sender, 4);
+            //Read(sender, variableIndex, comm);            
+        }
+
+        private static void HandleRead(int sender, List<int> ownership, Communicator comm, List<int> variables)
+        {
+            var variableIndex = comm.Receive<int>(sender, 2);
+            comm.Send(variables[variableIndex], sender, 4);
+        }
+
+        private static void HandleLock(int sender, List<int> ownership, Communicator comm)
+        {
+            bool locked;
+            var variableIndex = comm.Receive<int>(sender, 2);
+            if (ownership[variableIndex] == 0 || ownership[variableIndex] == sender) 
+            {
+                ownership[variableIndex] = sender;
+                locked = true;
+            }
+            else
+            {
+                locked = false;
+            }
+            comm.Send(locked, sender, 3);
+        }
+
+        private static void HandleUnlock(int sender, List<int> ownership, Communicator comm)
+        {
+            var variableIndex = comm.Receive<int>(sender, 2); 
+            if (ownership[variableIndex] == sender)
+            {
+                ownership[variableIndex] = 0;
+            }
+        }
 
         public static void Main(string[] args)
         {
-            Lab10Main(args);
+            NewMain(args);
             //RegMult(args);
             //KaratsubaMain(args);
             //var d = DateTime.Now;
@@ -473,5 +670,4 @@ namespace KaratsubaMPI
 
         }
     }
-
 }
